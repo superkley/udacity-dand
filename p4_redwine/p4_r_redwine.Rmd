@@ -1,0 +1,748 @@
+Exploratory Data Analysis: Red Wine Quality
+========================================================
+
+Udacity Data Analyst Nanodegree: Project 4
+
+Author: Ke Zhang
+
+Submission Date: 2017-04-04 (Revision 1)
+
+# Abstract
+
+This project performs an exploratory data analysis on the chemical properties influencing the quality of red wines.
+
+* Link to the red wine quality data set: [**wineQualityReds.csv**](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityReds.csv)
+* Link to the data set description: [**wineQualityInfo.txt**](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt)
+
+```{r global_options, include=FALSE}
+# global chunk options
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      fig.width = 8, fig.height = 6, fig.path = './figs/')
+```
+```{r import_packages}
+# load packages and set global themes settings
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(corrplot)
+library(MASS)
+theme_set(theme_minimal(12))
+```
+
+# Prepare and Preview Data
+
+In this secion we will load the red wine data set and display the structure and some basic statistics of the variables.
+
+```{r load_the_preview}
+# load the data
+df <- read.csv('./wineQualityReds.csv')
+
+# show data structure
+str(df)
+```
+
+Structure of the data:
+
+* There are **13** numeric variables with in total **1599** observations.
+* The variable _X_ is the identifier column which can be ignored in the following analysis.
+* According to the description the variable _quality_ has a value range between **0** (very bad) and **10** (very excellent). In this data set there are mainly **5** and **6** ratings.
+
+
+We'll drop _X_ since it is not useful for our analysis.
+```{r drop_x}
+df <- subset(df, select = -c(X) )
+```
+
+Now let's display some basic statistics:
+```{r basic_statistics}
+summary(df)
+```
+
+Summary of basic statistics:
+
+* The _X_ index column is now removed.
+* The output above shows the basic statistics of the remaining **12** variables.
+* Quality in this data set has a value ranging from **3** to **8** with a mean value of **5.6** and a median of **6.0**.
+* The five features _residual sugar_, _chlorides_, _free sulfur dioxide_, _total sulfur dioxide_ and _sulphates_ have extreme large maximum values compared to their mean and median values.
+* In the lower end the attribute _citric acid_ contains zeros.
+
+We are now interested how many zeros are in _citric acid_:
+
+```{r count_zeros}
+length(subset(df, df$citric.acid == 0.0)$citric.acid)
+```
+
+* Citric Acid contains as much as 132 zero values. The documentation says that the citric acid is found in small quantities in wines. So it should be fine with these zeros.
+
+
+# Univariate Plots Section
+
+```{r define_shared_univariate_functions}
+# plot frequency distribution
+plotFrequency <- function(var, xlab, ...) {
+  return(qplot(x = var, xlab = xlab, ...))
+}
+
+# plot box (e.g. to find out distributions or detect outliers)
+plotBox <- function(var, xlab, ylab = NULL, ...) {
+  return(qplot(x = 1, y = var, xlab = xlab, ylab = ylab, geom = 'boxplot'))
+}
+
+# drops top 1 % right-skewed outliers
+dropOutliers <- function(var, limit = 0.99, mat = df) {
+  # drop outliers above the limit from the given feature
+  mat <- subset(mat, var < quantile(var, limit))
+  return(mat[complete.cases(mat),])
+}
+
+```
+
+### Central tendencies and outliers
+
+In the first visualization we want to draw some _boxplots_ to reveal the central tendencies and dispersion of our numerical attributes and may also indicate some outliers:
+
+```{r fig.width=8, fig.height=8, detect_outliers}
+grid.arrange(
+  top = 'Central Tendency & Outliers',
+  plotBox(df$quality, 'Quality Rating'),
+  plotBox(df$fixed.acidity, 'Fixed Acidity'),
+  plotBox(df$volatile.acidity, 'Volatile Acidity'), 
+  plotBox(df$citric.acid, 'Citric Acid'),
+  plotBox(df$residual.sugar, 'Residual Sugar'), 
+  plotBox(df$chlorides, 'Chlorides'), 
+  plotBox(df$free.sulfur.dioxide, 'Free Sulfur Dioxide'),
+  plotBox(df$total.sulfur.dioxide, 'Total Sulfur Dioxide'),
+  plotBox(df$density, 'Density'), 
+  plotBox(df$pH, 'pH'),
+  plotBox(df$sulphates, 'Sulphates'), 
+  plotBox(df$alcohol, 'Alcohol'), 
+  ncol = 4)
+```
+
+* As we saw previously in the basic statistics the five features _residual sugar_, _chlorides_, _free sulfur dioxide_, _total sulfur dioxide_, _sulphates_ have extreme large outliers which we want to remove in the next step.
+
+```{r remove_outliers}
+df <- dropOutliers(df$total.sulfur.dioxide)
+df <- dropOutliers(df$residual.sugar)
+df <- dropOutliers(df$chlorides)
+df <- dropOutliers(df$free.sulfur.dioxide)
+df <- dropOutliers(df$sulphates)
+grid.arrange(
+  top = 'Remove Outliers',
+  plotBox(df$residual.sugar, 'Residual Sugar'), 
+  plotBox(df$chlorides, 'Chlorides'), 
+  plotBox(df$free.sulfur.dioxide, 'Free Sulfur Dioxide'),
+  plotBox(df$total.sulfur.dioxide, 'Total Sulfur Dioxide'),
+  plotBox(df$sulphates, 'Sulphates'),
+  ncol = 3)
+# statistics of data after outlier removal
+summary(df)
+```
+
+* The top 1% extreme large values are now removed from the variables _residual sugar_, _chlorides_, _free sulfur dioxide_, _total sulfur dioxide_, and _sulphates_.
+
+
+### Frequency distributions of the variables
+
+In the next plot we want to analyze the frequency distributions of the variables using histograms:
+
+```{r fig.width=8, fig.height=6, compare_quality_frequency}
+grid.arrange(
+  top = 'Frequency Distribution',
+  plotFrequency(df$quality, 'Quality Rating', bins = 6),
+  plotFrequency(df$fixed.acidity, 'Fixed Acidity'),
+  plotFrequency(df$volatile.acidity, 'Volatile Acidity'), 
+  plotFrequency(df$citric.acid, 'Citric Acid'),
+  plotFrequency(df$residual.sugar, 'Residual Sugar'), 
+  plotFrequency(df$chlorides, 'Chlorides'), 
+  plotFrequency(df$free.sulfur.dioxide, 'Free Sulfur Dioxide'),
+  plotFrequency(df$total.sulfur.dioxide, 'Total Sulfur Dioxide'),
+  plotFrequency(df$density, 'Density'), 
+  plotFrequency(df$pH, 'pH'),
+  plotFrequency(df$sulphates, 'Sulpahtes'), 
+  plotFrequency(df$alcohol, 'Alcohol'), 
+  ncol = 4)
+```
+
+In the historgram grid above we can summarize:
+
+* The variable _density_ and _pH_ have nearly normal curves with a few outliers.
+* The other variables _fixed acidity_, _total sulfur dioxide_, _free sulfur dioxide_ and _sulphates_ are more or less right skewed and long tailed.
+* _Quality_ is slightly left skewed.
+
+We have learnt that some right skewed variables.
+
+```{r fig.width=8, fig.height=4, compare_log10_transformation}
+grid.arrange(
+  top = 'Normalization using Log10 Transformation',
+  plotFrequency(df$fixed.acidity, 'Fixed Acidity'),
+  plotFrequency(df$sulphates, 'Sulphates'), 
+  plotFrequency(df$total.sulfur.dioxide, 'Total Sulfur Dioxide'), 
+  plotFrequency(df$free.sulfur.dioxide, 'Free Sulfur Dioxide'),
+  plotFrequency(log10(df$fixed.acidity), 'log10(Fixed Acidity)'),
+  plotFrequency(log10(df$sulphates), 'log10(Sulpahtes)'), 
+  plotFrequency(log10(df$total.sulfur.dioxide), 'log10(Total Sulfur Dioxide)'), 
+  plotFrequency(log10(df$free.sulfur.dioxide), 'log10(Free Sulfur Dioxide)'),
+  ncol = 4)
+```
+
+* After log10 transformation the variables _fixed.acidity_, _sulphates_, _total sulfur dioxide_ and _free sulfur dioxide_ are now more or less nearly normal.
+
+
+### Create quality levels
+
+Since the most common quality ratings are 5 or 6 and the other ratings have far less data points. We create here a new ordered _rating_ variable for more proper analysis:
+
+* `[0-4]`: bad
+* `[5-6]`: average
+* `[7-10]`: excellent
+
+```{r create_quality_levels}
+# define rules for setting quality ratings
+rating <- ifelse(df$quality < 5, 'bad', 
+                 ifelse(df$quality < 7, 'average', 
+                        ifelse(df$quality > 6, 'excellent', 'NA')))
+df$rating <- ordered(rating, levels = c('bad', 'average', 'excellent'))
+summary(df$rating)
+plotFrequency(df$rating, 'Quality Rating')
+```
+
+After the grouping into three categories it appears that most of the red wines are of average quality, followed by excellent, and then bad. Since there are so many average wines the question would be what makes a wine excellent or bad. We will address this issue in the bivariate and multivariate analysis.
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+In the data set there are 1599 observations about the variants of the Portuguese "Vinho Verde" wine and 12 variables about each wine. After the data cleaning phase 84 outliers were removed what leave us 1515 observations left. (Note: The top 1% of outliers were removed from the variables _residual sugar_, _chlorides_, _free sulfur dioxide_, _total sulfur dioxide_ and sulphates.)
+
+Additional to better understand the differences between excellent and bad wines we created an extra ordered variable called _rating_ which summaries the numeric _quality_ values into the three categories: bad, average and excellent. 
+
+Let's recheck the data structure:
+```{r modified_data_structure}
+str(df)
+```
+
+### What is/are the main feature(s) of interest in your dataset?
+
+Our main goal is to determine what makes a wine taste bad or excellent. So the _quality_ (or _rating_) is the main feature and the dependent variable. The other 11 attributes are independent variables.
+
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+
+I suspect alcohol, residual sugar and pH value could play a key role in the quality. In my opinion these are the factors which may make wine taste different.
+
+The pearson's correlation may give us a more precise answer. The correlations below are from the independent variables and the _quality_ value. The table identifies _alcohol_, _volatile.acidity_ and _sulphates_ as the top 3 attributes having the strongest linear correlations with quality.
+
+```{r quality_correlations}
+sort(abs(round(cor(df[1:12]), 2)[-12, 'quality']), decreasing = TRUE)
+```
+
+### Did you create any new variables from existing variables in the dataset?
+
+* I created an ordered rating variable which is a subset of quality based on three distinct categories: bad: `[0,4]`, average: `[5,6]` and excellent: `[7,10]`
+* The index variable X was removed because it was not used in the analysis.
+
+### Of the features you investigated, were there any unusual distributions?
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+
+* In the data set we have only quality ratings between 3 and 8. According to the data set description a quality from 0 to 10 is possible.
+* Most of the data points in quality have 5 or 6 as values.
+* The variables residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, and sulphates had very large numbers. Therefore the top 1% from the values were stripped off.
+* Fixed acidity, sulphates, residual sugar and chlorides all appeared to be long tailed and were log-transformed which revealed a normal distribution for each.
+* Citric acid has many zero values which should be ok after reading the data set description. 
+
+
+# Bivariate Plots Section
+
+```{r define_shared_bivariate_functions}
+# plot quality rating box to find relations between quality and others
+plotRatingBox <- function(yvar, ylab, xlab = NULL, show.legend = FALSE, 
+                            fill = rating, mat = df) {
+  p <- ggplot(data = mat, aes(rating, yvar, fill = fill)) +
+    geom_boxplot() +
+    xlab(xlab) +
+    ylab(ylab)
+  if (show.legend) {
+    return(p)
+  } else {
+    return(p + theme(legend.position = 'none'))
+  }
+}
+
+# abbreviates names in dataframe to fit to some plots
+abbreviateNames <- function(mat, min.length = 3) {
+  names(mat) <- abbreviate(names(mat), minlength = min.length, 
+                           use.classes = FALSE)
+  return(mat)
+}
+
+# significance of dependency test using 95% confidence interval
+# url: see corrplot example in the reference
+testDependency <- function(mat, level = 0.95){
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  diag(lowCI.mat) <- diag(uppCI.mat) <- 1
+  
+  # iterate over all elements in the matrix and run cor.test()
+  for (i in 1:(n - 1)) {
+      for (j in (i + 1):n) {
+          tmp <- cor.test(mat[,i], mat[,j], conf.level = level)
+          p.mat[i,j] <- p.mat[j,i] <- tmp$p.value
+          lowCI.mat[i,j] <- lowCI.mat[j,i] <- tmp$conf.int[1]
+          uppCI.mat[i,j] <- uppCI.mat[j,i] <- tmp$conf.int[2]
+      }
+  }
+  return(list(p.mat, lowCI.mat, uppCI.mat))
+}
+
+# plots conditional density function of quality rating and other variables.
+plotRatingCD <- function(var, xlab, ylab = 'Quality Rating', mat = df) {
+  return(cdplot(rating ~ var, data = mat, xlab = xlab, ylab = ylab))
+}
+```
+
+### Correlation Matrix combined with significance test:
+
+Pearson's correlation matrix is a good indicator for linear relationships. Let's examine which variables are correlated with each other:
+
+```{r correlation_matrix}
+result <- testDependency(df[1:12])
+corrplot.mixed(cor(abbreviateNames(df)[c(1:12)]), 
+               p.mat = result[[1]], sig.level = 0.001)
+```
+
+* Additional to the correlation heatmap and numbers we crossed the insignificant relationships using _corr.test()_, p=0.001 and 95% confidence interval.
+* The attribute names are abbreviated to fit into the matrix, e.g. _fix_ for 'fixed acidity'.
+* The variables _alcohol_, _citric acid_ and _sulphates_ are positively correlated to _quality_ and  tend to increase as the _quality_ rating gets higher.
+* The variables _volatile acidity_, _total sulfur dioxide_, _density_, _chlorides_ are negative correlated to quality.
+* The above dependency test shows also that the _quality_ rating is not linear correlated with the variables _residual sugar_, _free sulfur dioxide_ and _pH_.
+    * The correlation between _quality_ and _pH_ or _free sulfur dioxide_ are only marginal.
+    * _Residual sugar_ does not vary with _quality_.
+* The matrix plot identifies several moderate to strong correlations (abs(corr) >= 0.5) between the independent variables. The one with stronger correlation to _quality_ is bolded:
+    * _fixed acidity_ and **_citric acid_**
+    * _fixed acidity_ and **_density_**
+    * **_fixed acidity_** and _pH_
+    * **_volatile acidity_** and _citric acid_
+    * **_citric acid_** and _pH_
+    * **_alcohol_** and _density_
+    * _free sulfur dioxide_ and **_total sulfur dioxide_**
+* In the following analysis we may prefer to use the attributes having stronger correlation with quality (marked as bold). The **top 5** independent variables ordered by absolute correlation and substitutability:
+    * _alcohol_
+    * _volatile acidity_
+    * _sulphates_
+    * _total sulfur dioxide_
+    * _chlorides_
+  
+### Relationship between _quality_ and the other independent variables
+
+In the following we use side-by-side box plots to show the relationship between quality and the other independent variables and the differences in the independent variable across levels of quality.
+
+```{r quality_boxplots}
+grid.arrange(
+  top = 'Boxplots between Quality and others',
+  plotRatingBox(df$alcohol, 'Alcohol'), 
+  plotRatingBox(df$density, 'Density'),
+  plotRatingBox(df$sulphates, 'Sulphates'),
+  plotRatingBox(df$chlorides, 'Chlorides'),
+  plotRatingBox(df$volatile.acidity, 'Volatile Acidity'),
+  plotRatingBox(df$citric.acid, 'Citric Acid'),
+  plotRatingBox(df$fixed.acidity, 'Fixed Acidity'),
+  plotRatingBox(df$pH, 'pH'),
+  plotRatingBox(df$total.sulfur.dioxide, 'Total Sulfur Dioxide'),
+  plotRatingBox(df$free.sulfur.dioxide, 'Free Sulfur Dioxide'),
+  plotRatingBox(df$residual.sugar, 'Residual Sugar'),
+  ncol = 3
+)
+```
+
+From the side-by-side boxplots certain tendencies can be recognized:
+
+* Excellent wines tend to have:
+    * higher _alcohol_
+    * lower _density_
+    * lower _volatile acidity_ and _pH_
+    * higher _citric acid_ and _fixed acidity_
+    * higher _sulphates_
+* Bad wines tend to have:
+    * lower _sulphates_
+    * higher _volatile acidity_ and _pH_
+    * lower _citric acid_ and _fixed acidity_
+* Average wines tend to have:
+    * higher _total sulfur dioxide_ and _free sulfur dioxide_
+
+Let's save some combinations for the multivariate analysis:
+
+* _alcohol_ and _sulphates_ to identify excellent wines
+    * higher _alcohol_
+    * higher _sulphates_
+* _total sulfur dioxide_ and _sulphates_ to identify average wines
+    * higher _total sulfur dioxide_
+    * average _sulphates_
+* _volatile acidity_ and _sulphates_ to identify bad wines
+    * higher _volatile acidity_
+    * lower _sulphates_
+
+### Analysis using conditional density plot
+
+In the next step we want to analyze some of favored features so far using the conditional density plots.
+
+```{r alcohol_vs_quality }
+plotRatingCD(df$alcohol, 'Alcohol')
+```
+
+Conditional density function between _alcohol_ and _quality_:
+
+* Excellent wines have an alcohol content between 9 and 15.
+* The probability of being excellent increases with the alcohol content when the alcohol is below 13.5%.
+* Lower alcohol content tends to have more chance being bad.
+
+```{r ph_vs_quality }
+plotRatingCD(df$pH, 'pH')
+```
+
+Conditional density function between _pH_ and _quality_:
+
+* An excellent wine quality has a pH value from 2.8 to 3.9.
+* A pH value below 2.8 has almost a 100% chance to be of bad quality.
+* Between pH value of 3.75 and 3.85 the probability of being execellent is at the greatest (~30%) 
+* When pH is near 3.9 there is a 50% chance of being bad.
+
+```{r volatile_acidity_vs_quality}
+plotRatingCD(df$volatile.acidity, 'Volatile Acidity [g/dm³]')
+```
+
+Conditional density function between _volatile acidity_ and _quality_:
+
+* An excellent wine quality has a volatile acidity between 0 to 1.0.
+* A volatile acidity above 1.5 is always bad.
+* The probabily of being execellent is at the greatest when volatile acidity is below 0.35(~30%) 
+* When volatile acidity is below 0.7 the wine quality is nearly always good or excellent.
+* A volatile acidity near 1.1 is also a bad indicator for good wines.
+
+```{r sulphates_vs_quality}
+plotRatingCD(df$sulphates, 'Sulphates [g/dm³]')
+```
+Conditional density function between _sulphates_ and _quality_:
+
+* An excellent wine quality has a sulphates value between 0 to 1.5.
+* A sulphates above 1.5 has no chance of being excellent.
+* When sulphates is below 0.3 or greater than 1.9 the probabily of being bad is at greatest.
+* The chance to be excellent is at greatest when sulphates is near 0.8, 1.0 or 1.4
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+From the correlation matrix and the boxplots, it appears that _alcohol_, _volatile acidity_, _density_, _chlorides_ and _sulphates_ tend to change as the quality of wine gets higher.
+
+Higher _alcohol_, _sulphates_ and _citric acid_ combined with lower _volatile acidity_ and _density_ seem to distinguish wines with excellent quality.
+
+Higher _volatile acidity_ and _pH_ in combination with lower _sulphates_, _citric acid_ and _fixed acidity_ tend to detect bad wines.
+
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+
+In the correlation matrix we can see several moderate to strong correlations (abs(corr) > 0.5) between the independent variables:
+
+* _fixed acidity_ and _citric acid_
+* _fixed acidity_ and _density_
+* _fixed acidity_ and _pH_
+* _volatile acidity_ and _citric acid_
+* _citric acid_ and _pH_
+* _alcohol_ and _density_
+* _free sulfur dioxide_ and _total sulfur dioxide_
+
+We might prefer to use the attributes having stronger correlation with quality.
+
+
+### What was the strongest relationship you found?
+
+The strongest correlations between the independent variables:
+
+* corr(_fixed acidity_, _pH_) = **.72** and
+
+The strongest correlation between quality and the others:
+
+* corr(_quality_, _alcohol_) = **.47**
+
+
+# Multivariate Plots Section
+
+```{r define_shared_multivariate_functions}
+# faceted plot by rating ranges and between 2 independent variables 
+# using quality as color and the top 1% extreme values cleaned
+plotRatingScatter <- function(xvar, yvar, xlab, ylab, use.facet =TRUE, 
+                              mat = df) {
+  # draws jitter plot 
+  p = ggplot(data = mat, aes(xvar, yvar, color = rating)) +
+  geom_jitter(alpha = 0.5, size = 2) + 
+  xlab(xlab) +
+  ylab(ylab) +
+  coord_cartesian(
+    xlim = c(quantile(xvar, .01), quantile(xvar, .99)),
+    ylim = c(quantile(yvar, .01), quantile(yvar, .99))
+  ) + 
+  stat_smooth(method = 'lm', alpha = 0.25)
+  if (use.facet) {
+    return(p + facet_wrap(~rating))
+  } else {
+    return(p)
+  }
+}
+```
+
+In the previous side-by-side boxplots we saw some interesting combinations:
+
+* _alcohol_ and _sulphates_ to identify excellent wines using:
+    * higher _alcohol_
+    * higher _sulphates_
+* _total sulfur dioxide_ and _sulphates_ to identify average wines using:
+    * higher _total sulfur dioxide_
+    * average _sulphates_
+* _volatile acidity_ and _sulphates_ to identify bad wines using:
+    * higher _volatile acidity_
+    * lower _sulphates_
+
+In the following scatterplots we sliced the top and bottom 1% extreme values to get an better overall insight in the comparison.
+
+### Identify excellent wines using _alcohol_ and _sulphates_
+```{r sulphates_vs_alcohol}
+plotRatingScatter(df$sulphates, df$alcohol, 
+                  'Sulphates [g/dm³]', 'Alcohol [% vol]')
+```
+
+Relationship between _sulphates_ and _alcohol_:
+
+* Compared to others the excellent wines tend to have more sulphates and more alcohol volume.
+* Most of the bad wines are located in the left-bottom corner.
+* The average wines have all kinds of sulphates and alcohol values. But the darker areas are also in the left-bottom corner. 
+
+### Identify average wines using _sulphates_ and _total sulfur dioxide_
+
+```{r sulphates_vs_total_sulfur_dioxide}
+plotRatingScatter(df$sulphates, df$total.sulfur.dioxide, 
+                  'Sulphates [g/dm³]', 'Total Sulfur Dioxide [mg/dm³]')
+```
+
+Relationship between _sulphates_ and _total sulfur dioxide_:
+
+* As expected, although in this plot the average wines have a wide range of values, the average wines have slightly more total sulfur dioxide and compared to excellent quality wines they have slightly lower sulphates.
+* Bad wines tend to have higher total sulfur dioxide and lower sulphates values.
+* Excellent wines have relatively higher sulphates and lower total sulfur dioxide than bad ones.
+
+
+### Identify bad wines using _sulphates_ and _volatile acidity_
+
+```{r sulphates_vs_volatile_acidity}
+plotRatingScatter(df$sulphates, df$volatile.acidity, 
+                  'Sulphates [g/dm³]', 'Volatile Acidity [g/dm³]')
+```
+
+Relationship between _sulphates_ and _volatile acidity_:
+
+* Wines of bad quality have in average lower sulphates. But unfortunately the combination with volatile acidity vality don't help us to identiy bad wines clearly. 
+* Excellent wines have higher volatile acidity but the sulphate values mainly overlap with those of the average ones.
+
+### Relationship between _volatile acidity_ and _alcohol_
+
+Before continue let's check relationship between _alcohol_ and _volatile acidity_:
+```{r volatile_acidity_vs_alcohol}
+plotRatingScatter((df$volatile.acidity), df$alcohol, 
+                  'Volatile Acidity [g/dm³]', 'Alcohol [% vol]')
+```
+
+Relationship between _sulphates_ and _volatile acidity_:
+
+* It appears that most of the bad wines have an alcohol volume below 10 and a volatile acidity below 0.75.
+* The values of average wines are widely distributed. Most of them have lower alcohol volume than excellent wines.
+* Excellent wines have higher alcohol rates. 
+* When the volatile acidity is greater than 0.75 the wine has more chance to be average or excellent.
+
+
+### Create linear regression model
+
+Until now, we have found five major variables from the previous analysis: _alcohol_, _volatile acidity_, _sulphates_, _total sulfur dioxide_ and _chlorides_. Now we'll try to build a prediction model using linear regression and compare our result with the automatic variable selection using the MASS package.
+
+```{r Manual_Linear_Model}
+# linear regression: http://www.statmethods.net/stats/regression.html
+# lm from our manually selected variables
+manual.fit <- lm(quality ~ alcohol + volatile.acidity + sulphates + total.sulfur.dioxide + chlorides, data = df)
+summary(manual.fit)
+plot(manual.fit)
+```
+
+The plot above shows the linear model using our own manual selected variables. The estimates for the coefficients are:
+
+* alcohol: 0.3
+* volatile.acidity: -1.1
+* sulphates: 1.4
+* total.sulfur.dioxide: -0.0 (seems to be irrelevant)
+* chlorides: -1.6
+* (intercept): 2.8
+
+```{r variable_selection}
+all.fit <- lm(quality ~ alcohol + volatile.acidity + sulphates + total.sulfur.dioxide + chlorides
+          +density + citric.acid + fixed.acidity + pH + total.sulfur.dioxide + free.sulfur.dioxide + residual.sugar, data = df)
+automatic.fit <- stepAIC(all.fit, direction = "both", trace = FALSE)
+automatic.fit$anova
+summary(automatic.fit)
+plot(automatic.fit)
+```
+
+Linear Model using variable selection:
+
+* We used in the above plot the stepwise regression variable selection from the MASS package. The final model shows a linear relationship between quality and the coefficients:
+    * _alcohol: 0.3
+    * _volatile.acidity: -1.0
+    * _sulphates_: 1.4
+    * _total.sulfur.dioxide_: -0.0 (irrelevant)
+    * _chlorides_: -1.8
+    * _pH_: -0.7
+    * _citric.acid_: -0.3
+    * (intercept): 2.4
+* Additionally to our variable selection the pH and citric acid seem to play some roles as well.
+
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+From the faceted scatter plot and the linear regression model we saw that a higher _alcohol_, _sulphates_, and a lower _volatile acidity_, _chlorides_ might lead to a better wine quality.
+
+
+### Were there any interesting or surprising interactions between features?
+
+* In the bivariate analysis we saw only a marginal linear correlation between _pH_ and _quality_. Due to the strong correlation between the pH and acid variables I decided to take only _volatile acidity_ into the further analysis which had the strongest correlation to _quality_. In the end however, the linear model using variable selection shows that the _pH_ variable plays also an important role in indicating good wines.
+* In the faceted scatter plots when plotting the main features together, I had expected that the combination of the features would show a more distinctive result. Such as identify bad or excellent wines clearly. However the combination of the variables e.g. using alcohol and volatile acidity had rather a disappointing result. It seems that there were very likely some counteracting effects when combining multiple variables together.
+
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+Yes. I created one linear model using the selected main features from the previous analysis and another one using stepwise variable selection from the MASS package.
+
+The strengths of the linear model are:
+
+* The linear model is easy to implement and widely used.
+* It shows trends and can even predict outputs beyond the observed data set. (e.g. estimates variables for very excellent qualities 9 or 10)
+ 
+The limitations of the linear model are:
+
+* Linear model tries to describe a linear relationship between the variables. It's not sure if the dependency between quality and other main features are really linear.
+* The quality ratings in the data set were all between 3 to 8. And we had relatively few data for very bad or very excellent wines. It's questionable if the data used was sufficient to determine the linear model coefficients.
+* Linear regression is limited to predict numeric variables.
+* Linear regressions are sensitive to outliers.
+
+------
+
+# Final Plots and Summary
+
+### Plot One: Effect of Alcohol on Quality 
+
+```{r Plot_One}
+plotRatingBox(df$alcohol, 'Alcohol [% vol]', 'Quality', TRUE, df$quality) +
+  ggtitle('Effect of Alcohol on Quality') +
+  guides(fill = guide_legend(title = 'Quality')) +
+  theme(plot.title = element_text(size = 18, hjust = .5))
+```
+
+### Description One: Effect of Alcohol on Quality
+
+This first plot I chose is a side-by-side **boxplot** showing the relationship between _quality_ and _alcohol_. I think it's interesting because _alcohol_ had the strongest pearson correlation with _quality_ and this boxplot shows clearly how the excellent wines tend to have higher _alcohol_ volumes than the other two groups. 
+
+If we only consider the average and excellent wines, the above plot shows clearly that higher _alcohol_ volume yields better wines. The quantiles of bad and average, however, overlap each other somehow. Maybe if we can use some other factors to distinguish between those wines.
+
+Consequently the next time when I go to the wine shop I'll check for wines with a higher alcohol volume.
+
+
+### Plot Two: Combined Effect of Alcohol and Volatile Acidity on Quality
+
+```{r Plot_Two}
+plotRatingScatter((df$volatile.acidity), df$alcohol, 
+                  'Volatile Acidity [g/dm³]', 'Alcohol [% vol]',
+                  use.facet = FALSE) +
+  ggtitle('Effect of Alcohol and Volatile Acidity on Quality') +
+  theme(plot.title = element_text(size = 18, hjust = .5))
+```
+
+### Description Two
+
+In the second plot we demonstrate how the _alcohol_ and _volatile acidity_ affect the _quality_ in a combined way. This plot is interesting because it displays the individual data points for the _alcohol_ and _volatile acidity_ values and uses different colors to show the three _quality_ levels 
+
+The plot above shows that blue dots representing wines with excellent qualities tend to concentrate in the left upper corner. This means that excellent wines have lower _volatile acidity_ and higher _alcohol_ The bad wines in other hand tend to be have higher _volatile acidity_ and lower _alcohol_ volume.
+
+Additionally in this plot we see that there are far more wines with average rating than the other two groups. And the average wines seem largely overlaps with both excellent and bad wines in both variables. But if we can be selective, with an alcohol volume higher than 11.5% and a volatile acidity below 0.4g/dm³ we'll hardly ever encounter bad wines and have even more than 50% chance to get an excellent bottle.
+
+
+### Plot Three: Linear Regression Model
+
+```{r echo=FALSE, Plot_Three}
+lm.fit <- lm(quality ~ alcohol + volatile.acidity + sulphates + pH + 
+               chlorides + citric.acid, data = df)
+summary(lm.fit)
+plot(lm.fit)
+```
+
+### Description Three: Linear Regression Model
+
+This final plot is perhaps one of the most interesting visualization as it illustrates the relationship between quality and the independent features as a linear model. In the linear model above we used the results from the multivariate analysis and uses the following coefficients:
+
+* alcohol: 0.3
+* volatile.acidity: -1.1
+* sulphates: 1.4
+* chlorides: -1.7
+* pH: -0.7
+* citric.acid: -0.4
+* (intercept): 4.7
+
+From these plots, we can identify observations 282, 653, 833, 127 and 1375 as possibly problematic to our model. We can look at these observations to see which feature values they have.
+
+The normal QQ-plot compares the quantiles of the standardized residuals to the theoretical quantiles of the linear model. The points follow a mainly linear pattern, suggesting that the data are nearly identical distributed. But in the both ends there are a recognizable amount of points deviating from the theoretical quantiles.
+
+From the lm() output we know that the residual standard error of this model is 0.649 on 1508 degrees of freedom and and adjusted R² of 0.364 which says that the linear model fits the data only moderately.
+
+As we discussed in the last optional question, the relationships between the variables of the underlying data might be actually unlinear. It is subject for a further analysis. As I answered that question, another model came up in my mind. I thought about rule-based models maybe the random forest model.
+
+
+------
+
+# Reflection
+
+In this exercise, we explored the red wine data set on its quality and other physicochemical properties using exploratory data analysis. We have discovered interesting relationships in the data step by step and produced and refines several plots to illustrate them.
+
+It was amazing to see that the alcohol volume had a such big influence on identifying excellent wines which was clearly see in the side-by-side boxplot.
+
+But there were difficulties too during the analysis. In the data visualization phase some struggles happened when plotting with some external libraries which had other behaviors than _ggplot2_, such as _cdplot_ or _corrplot_. I had troubles to finetune their colors or font sizes.For example, when I wanted to add the title for the _corrplot_, only the bottom half of it was displayed in the plot. The feature to merge them into a matrix like using _grid.arrange_ was missing as well.
+
+In the bivariate and multivariate analysis we had problems to differentiate between the bad and average wines. For the future, we might need to dive deeper to investigate in that direction.
+
+Lastly, it should be mentioned that the taste of wine is highly subjective. Different testers might give the same wine different quality ratings. I can even imagine that the same wine could have different ratings by the same tester depending on the day or the mood of the tester. Nevertheless, our analysis could uncover some interesting insights of the wine quality in the available observations.
+
+
+------
+# References
+
+- [knitr output manipulation](http://yihui.name/knitr/demo/output/)
+- [ggplot documentation](http://docs.ggplot2.org/current/index.html)
+- [cdplot example](https://www.rdocumentation.org/packages/graphics/versions/3.3.2/topics/cdplot)
+- [corrplot example](https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html)
+- [UCLA: robust regression](http://stats.idre.ucla.edu/r/dae/robust-regression/)
+- [Wikipedia: qq plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot)
+- [Wikipedia: linear regression](https://en.wikipedia.org/wiki/Linear_regression)
+- [Udacity Website](https://www.udacity.com/)
+
+
+# Reproduction Enrivonment
+```{r reproduction_environment}
+sessionInfo()
+```

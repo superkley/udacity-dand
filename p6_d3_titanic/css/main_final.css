@@ -1,0 +1,117 @@
+body {
+    background-color: #FFFFFF;	
+}
+.main.container {
+    margin-top: 1.2em;
+}
+.header.item {
+	font-size: 1.8rem;
+}
+.main.menu {
+    margin-top: 0.8em;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    transition: box-shadow 0.5s ease, padding 0.5s ease;
+}
+.main.menu .item img.logo {
+    margin-right: 0.6em;
+}
+.main.menu.fixed {
+    background-color: #FFFFFF;
+    border: 1px solid #DDD;
+    box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+    padding-bottom: 0.6em;
+}
+.ui.footer.segment {
+    margin: 2em 0em 0em;
+    padding: 3em 0em;
+}
+.ui.label {
+	background-color: #fcfcfc !important;
+}
+.ui.text.container {
+	font-size: 1.2rem;
+}
+.ui.segment, .ui.segments .segment {
+	font-size: 1.2rem;
+}
+#chart-description {
+	font-style: italic;
+}
+
+/**
+ * step: read 
+ **/
+@font-face {
+  font-family: 'Shadows Into Light';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Shadows Into Light'), local('ShadowsIntoLight'), url(https://fonts.gstatic.com/s/shadowsintolight/v6/clhLqOv7MXn459PTh0gXYFK2TSYBz0eNcHnp4YqE4Ts.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2212, U+2215;
+}
+.line {
+  fill: none;
+}
+.line,.box {
+  stroke: black;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.writing {
+  font-family: 'Shadows Into Light', cursive !important;
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+}
+.tooltip.writing {
+  font-size: 1.2rem !important;
+}
+.dimple-title.writing {
+  font-size: 1.6rem !important;
+}
+.dimple-legend {
+  font-family: 'Shadows Into Light', cursive !important;
+  font-size: 1.2rem !important;
+  font-weight: 400 !important;
+}
+.svg-chart {
+  background-color: #fcfcfc;
+}
+/**
+ * series colors
+ **/
+.dimple-survived {
+  stroke: #13c602 !important;
+  fill: #F7FFF7 !important;
+}
+.dimple-died {
+	stroke: #808080 !important;
+	fill: #FAFAFA !important;
+}
+.dimple-first {
+	/* blue */
+	stroke: #9AB3E2;
+	fill: #dbe5f8;
+}
+.dimple-second {
+	/* red */
+	stroke: #ff9a9c;
+	fill: #ffeef0;
+}
+.dimple-third {
+	/* green */
+	stroke: #aebd91;
+	fill: #F2F7E8;
+}
+.dimple-fourth {
+	/* purple */
+	stroke: #F298D1;
+	fill: #fae7fa;
+}
+.survived {
+	color: #13c602;
+}
+.died {
+	color: #808080;
+}

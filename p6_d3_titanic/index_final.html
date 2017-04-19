@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- standard meta -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <meta name="description" content="Explore the titanic survival data and figure out how to survive!" />
+    <meta name="keywords" content="udacity, dand, titanic, survival, dimplejs, visualization" />
+
+    <!-- custom headers -->
+    <title>Data Visualization | Titanic Survival Guide</title>
+    <link rel="image_src" type="image/png" href="images/logo.png" />
+	<link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="stylesheet" type="text/css" href="css/semantic-2.2.10.min.css">
+	<link rel="stylesheet" type="text/css" href="css/jquery.dynatable-0.3.1.min.css">
+    <link rel="stylesheet" type="text/css" href="css/main_final.css">
+
+    <script src="js/jquery-3.1.1.min.js"></script>
+    <script src="js/semantic-2.2.10.min.js"></script>
+	<script src="js/jquery.dynatable-0.3.1.min.js"></script>
+    <script src="js/d3-4.3.0.min.js"></script>
+    <script src="js/dimple-2.3.0.min.js"></script>
+    <script src="js/main_table.js"></script>
+	<script src="js/main_chart.js"></script>
+    <script src="js/main.js"></script>
+</head>
+<body>
+    <!-- MENU -->
+    <div class="ui main text container">
+        <h1 class="ui header">Data Visualization: Titanic Survival Guide</h1>
+        <p>Allow yourself to be inspired and find out which group(s) of the <i>714</i> passengers on board the Titanic had a greater chance to survive.</p>
+    </div>
+
+    <div class="ui borderless main menu">
+        <div class="ui text container">
+            <div href="#" class="header item">
+                <img class="logo" src="./images/logo.png">Titanic Survivors
+            </div>
+            <div href="#" class="ui right floated item">
+                <div class="ui steps">
+                    <a class="step" data-name="read">
+                        <div class="content">
+                            <div class="title">Read</div>
+                        </div>
+                    </a>
+                    <a class="step" data-name="explore">
+                        <div class="content">
+                            <div class="title">Explore</div>
+                        </div>
+                    </a>
+                    <a class="step" data-name="dig">
+                        <div class="content">
+                            <div class="title">Dig</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+	<!-- STEP 1: READ -->
+	<div class="ui tab segment read" data-tab="read">
+		<div class="ui text container">    
+			<a href="https://en.wikipedia.org/wiki/RMS_Titanic" class="ui medium left floated image">
+                <img src="./images/titanic_sinking_postcard.png">
+			</a>
+            <p>
+                <a target="_blank" href="./assets/p2_analysis_titanic.html">In a recent data analysis project</a>, we analyzed the Titanic data set rigorously. The main outcome was the answer to the crusial question - what factors made people more likely to survive?
+            </p>
+            <p>
+                By juggling with the three biggest influencers on the survival chance namely <strong>'Sex'</strong>, <strong>'Ticket Class'</strong> and <strong>'Age Group'</strong>, this web page acts as a playground for visual data storytelling utilizing the findings and exploring the different relationships between the three variables.
+            </p>
+            <p>
+                In <a href='#' onclick="selectStepByName('explore');">the next step</a> let's check out the interactive visualization to clear the facts up. Rather than showing static charts and putting fixed explanations you have free control over all the combinations possible with the three categories and you'll be inspired to create your own interpretations of why certain groups could survive or not.
+            </p>
+            <p>
+                <a href='#' onclick="selectStepByName('dig');">The last step</a> is for digging into the numbers. A dynamic table with simplified Titanic data is displayed there. You have the options to sort and filter the records.
+            </p>
+            <p>
+                P.S. If you're interested in the original data. The <a href="./assets/titanic-data.csv">Titanic data</a> is provided here for you as a download link. It contains demographics and passenger information from <i>891</i> of the 2224 passengers and crew on board the Titanic from which we derived the data set visualized on this page. (<i>Note:</i> only passengers with a registered age are analyzed here.) A full description of the original dataset can be found on the <a href="https://www.kaggle.com/c/titanic/data">Kaggle website</a>, where also the data was obtained.
+				<br />
+				<br />
+				<br />
+            </p>
+        </div>
+	</div>
+
+	<!-- STEP 2: EXPLORE -->
+	<div class="ui tab segment explore" data-tab="explore">
+		<div class="ui text container">		
+            <div class="ui fluid multiple selection dropdown">
+                <input type="hidden" name="categories" id="categories">
+                <i class="dropdown icon"></i>
+                <div class="default text">Select Categories</div>
+                <div class="menu">
+                    <div class="item" data-value="sex"><i class="heterosexual icon"></i>Sex</div>
+                    <div class="item" data-value="pclass"><i class="money icon"></i>Ticket Class</div>
+                    <div class="item" data-value="age"><i class="child icon"></i>Age Group</div>
+                </div>
+            </div>
+			<div class="ui toggle checkbox">
+				<input name="showDistributions" id="showDistributions" type="checkbox">
+			    <label><i>Display passenger distributions instead of survival rates</i></label>
+			</div>
+			<div class="ui medium header" id="chart-title">
+                Titanic Survivors
+            </div>
+			<p id="chart-description">
+                Which group had the best chance to survive?
+            </p>
+			<div id="charts"></div>
+        </div>
+	</div>
+
+	<!-- STEP 3: DIG -->
+	<div class="ui tab segment dig" data-tab="dig">
+		<div class="ui text container">
+            <table class="ui striped table" id="dig-table">
+                <thead>
+                    <tr>
+                        <th >Name</th>
+                        <th width="140">Ticket Class</th>
+                        <th width="80">Sex</th>
+                        <th width="80">Age</th>
+						<th width="120">Survived</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="ui inverted vertical footer segment">
+        <div class="ui center aligned container">
+            <a class="ui blue image label" href="./README.md" target="_blank">
+                <i class="file text outline icon"></i> README.md
+            </a>
+            <a class="ui grey image label" href="./assets/titanic_data.csv" target="_blank">
+                <i class="cloud download icon"></i> Titanic Data Set
+            </a>
+            <a class="ui grey image label" href="./assets/LICENSE.md" target="_blank">
+                <i class="copyright icon"></i> MIT License
+            </a>
+        </div>
+    </div>
+</body>
+</html>
