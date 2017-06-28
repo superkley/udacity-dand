@@ -1,16 +1,15 @@
-# Udacity Data Scientist Nanodegree Curriculum
+# Udacity Data Scientist Nanodegree Projects
 
 ### Program Syllabus
 
-- **Project 0 - Intro**: Analyze Bay Are Bike Share Data
+- **Project 0 - Intro**: Descriptive and inferential statistics on bay area bike share data
 - **Project 1 - Statistics**: Test a Perceptual Phenomenon
 - **Project 2 - Data Analysis**: Investigate the Titanic Dataset
 - **Project 3 - Data Wrangling with MongoDB**: Wrangle OpenStreetMap Data
 - **Project 4 - Exploratory Data Analysis**: Red Wine Quality
 - **Project 5 - Intro to Machine Learning**: Identifiying Fraud from Enron Email
-- **Project 6 - Data Visualization**: Titanic Survivors
-- **Project 7 - AB Testing**: Free Trial Experiment Design
-
+- **Project 6 - Data Visualization**: Advanced explanatory analysis with D3 and DimpleJS on Titanic dataset
+- **Project 7 - AB Testing to justify business decisions**: Free Trial Experiment Design
 
 ### Supporting Courses (ordered)
 
